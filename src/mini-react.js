@@ -29,6 +29,7 @@ let nextUnitOfWork = null;
 let wipRoot = null;
 let currentRoot = null;
 
+let deletions = null;
 /* * render的过程，形成fiber */
 function render(element, container) {
   wipRoot = {
@@ -38,6 +39,9 @@ function render(element, container) {
     },
     alternate: currentRoot,
   };
+
+  deletions = []; // 要删除的节点
+
   nextUnitOfWork = wipRoot;
 }
 
@@ -97,8 +101,7 @@ function updateHostComponent(fiber) {
   reconcileChildren(fiber, fiber.props.children);
 }
 
-
-
+/* -------------------------------------- */
 /* createDom 的创建 */
 function createDom(fiber) {
   const dom = fiber.type == "TEXT_ELEMENT" ? document.createTextNode("") : document.createElement(fiber.type);
@@ -106,21 +109,106 @@ function createDom(fiber) {
   return dom;
 }
 
-const isEvent = key => key.startsWith("on"); // 是否为事件
-const isProperty = key => key !== 'children' && !isEvent(key); // 是否为属性
-const isNew = (prev, next) => key => prev[key] !== next[key]; // 是否为新属性
-const isGone = (prev, next) => key => !(key in next); // 是否移除
+const isEvent = (key) => key.startsWith("on"); // 是否为事件
+const isProperty = (key) => key !== "children" && !isEvent(key); // 是否为属性
+const isNew = (prev, next) => (key) => prev[key] !== next[key]; // 是否为新属性
+const isGone = (prev, next) => (key) => !(key in next); // 是否移除
 
 function updateDom(dom, prevProps, nextProps) {
-    //Remove old or changed event listeners
-    Object.keys(prevProps).filter(isEvent).filter(key => !(key in nextProps) || isNew(prevProps, nextProps)(key)).forEach(name => {
-        const eventType = name.toLowerCase().substring(2);
-        dom.removeEventListener(eventType, prevProps[name])
-    })
+  //Remove old or changed event listeners
+  Object.keys(prevProps)
+    .filter(isEvent)
+    .filter((key) => !(key in nextProps) || isNew(prevProps, nextProps)(key))
+    .forEach((name) => {
+      const eventType = name.toLowerCase().substring(2);
+      dom.removeEventListener(eventType, prevProps[name]);
+    });
+
+  // Remove old properties
+  Object.keys(prevProps)
+    .filter(isProperty)
+    .filter(isGone(prevProps, nextProps))
+    .forEach((name) => {
+      dom[name] = "";
+    });
+
+  // Set new or changed properties
+  Object.keys(nextProps)
+    .filter(isProperty)
+    .filter(isNew(prevProps, nextProps))
+    .forEach((name) => {
+      dom[name] = nextProps[name];
+    });
+
+  // Add event listeners
+  Object.keys(nextProps)
+    .filter(isEvent)
+    .filter(isNew(prevProps, nextProps))
+    .forEach((name) => {
+      const eventType = name.toLowerCase().substring(2);
+      dom.addEventListener(eventType, nextProps[name]);
+    });
 }
+
+/* -------------------------------------- */
+/* * 继续处理子节点 */
+function reconcileChildren(wipFiber, elements) {
+  let index = 0;
+  let oldFiber = wipFiber.alternate?.child;
+  let prevSibling = null;
+
+  // 就可以和之前的做 diff，判断是新增、修改、删除，打上对应的标记
+  while (index < elements.length || oldFiber !== null) {
+    const element = elements[index];
+    let newFiber = null;
+
+    const sameType = oldFiber && element && element.type === oldFiber.type;
+    /* 有相同类型 */
+    if (sameType) {
+      newFiber = {
+        type: oldFiber.type,
+        props: element.props,
+        dom: oldFiber.dom, // dom 是对应的 dom 节点，
+        return: wipFiber,
+        alternate: oldFiber, // alternate 是对应的旧的 fiber 节点。
+        effectTag: "UPDATE", // effectTag 是增删改的标记
+      };
+    }
+    /* 有新的元素 */
+    if (element && !sameType) {
+      newFiber = {
+        type: element.type,
+        props: element.props,
+        dom: null,
+        return: wipFiber,
+        alternate: null,
+        effectTag: "PLACEMENT",
+      };
+    }
+
+    /* 老元素还在 */
+    if (oldFiber && !sameType) {
+      oldFiber.effectTag = "DELETION";
+      deletions.push(oldFiber);
+    }
+    if (oldFiber) {
+      oldFiber = oldFiber.sibling;
+    }
+
+    if (index === 0) {
+      wipFiber.child = newFiber;
+    } else if (element) {
+      prevSibling.sibling = newFiber;
+    }
+    prevSibling = newFiber;
+    index++;
+  }
+}
+
+/* 实现useState */
 
 /* * 协调子节点 */
 const MiniReact = {
-    createElement,
-  };
+  createElement,
+};
 window.MiniReact = MiniReact;
