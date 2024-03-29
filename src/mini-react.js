@@ -2,6 +2,7 @@
  * @Date: 2024-03-29 11:26:54
  * @Description: description
  */
+/* 创建元素的过程 */
 function createElement(type, props, ...children) {
   return {
     type,
@@ -14,7 +15,7 @@ function createElement(type, props, ...children) {
     },
   };
 }
-
+/* 创建文本节点 */
 function createTextNode(nodeValue) {
   return {
     type: "TEXT_ELEMENT",
@@ -25,9 +26,9 @@ function createTextNode(nodeValue) {
   };
 }
 
-let nextUnitOfWork = null;
-let wipRoot = null;
-let currentRoot = null;
+let nextUnitOfWork = null; // 用 nextUnitOfWork 指向下一个要处理的 fiber 节点
+let wipRoot = null; // 一个是当前正在处理的 fiber 链表的根 wipRoot
+let currentRoot = null; // 一个是之前的历史 fiber 链表的根 currentRoot
 
 let deletions = null;
 /* * render的过程，形成fiber */
