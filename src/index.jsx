@@ -1,17 +1,18 @@
-/*
- * @Date: 2024-03-29 11:04:13
- * @Description: description
- */
-// const content = (
-//   <div>
-//     <Hansen>light</Hansen>
-//     <a href="xxx">link</a>
-//   </div>
-// );
+const { render, useState, useEffect } = window.MiniReact;
 
-const content = (
-  <div>
-    <a href="xxx">link</a>
-  </div>
-);
-console.log(JSON.stringify(content, null, 2));
+function App() {
+  const [count, setCount] = useState(0);
+
+  function handleClick() {
+    setCount((count) => count + 1);
+  }
+
+  return (
+    <div>
+      <p>{count}</p>
+      <button onClick={handleClick}>加一</button>
+    </div>
+  );
+}
+
+render(<App />, document.getElementById("root"));
