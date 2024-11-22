@@ -1,6 +1,7 @@
 "use strict";
 (function () {
     function createElement(type, props, ...children) {
+        debugger;
         return {
             type,
             props: Object.assign(Object.assign({}, props), { children: children.map((child) => {
@@ -10,33 +11,40 @@
         };
     }
     function createTextNode(nodeValue) {
+        debugger;
         return {
             type: "TEXT_ELEMENT",
             props: {
                 nodeValue,
-                children: []
+                children: [],
             },
         };
     }
-    let nextUnitOfWork = null;
-    let wipRoot = null;
-    let currentRoot = null;
+    let nextUnitOfWork = null; /* 用 nextUnitOfWork 指向下一个要处理的 fiber 节点 */
+    let wipRoot = null; /* 根 wipRoot */
+    let currentRoot = null; /* 历史的root */
     let deletions = null;
+    /* 这里做一个初始化的处理 */
     function render(element, container) {
+        debugger;
+        /* 初始化根值 */
         wipRoot = {
-            dom: container,
+            dom: container /* 绑定的根节点 */,
             props: {
                 children: [element],
             },
-            alternate: currentRoot,
+            alternate: currentRoot /* 历史的根节点 */,
         };
         deletions = [];
         nextUnitOfWork = wipRoot;
     }
+    /* reconcile 过程任务循环 */
     function workLoop(deadline) {
+        debugger;
         let shouldYield = false;
         while (nextUnitOfWork && !shouldYield) {
             nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+            console.log(nextUnitOfWork, 51);
             shouldYield = deadline.timeRemaining() < 1;
         }
         if (!nextUnitOfWork && wipRoot) {
@@ -44,9 +52,13 @@
         }
         requestIdleCallback(workLoop);
     }
+    /* 这边进行时间切片，进行fiber的过程 */
     requestIdleCallback(workLoop);
+    /* fiber指的是一个节点的信息，重新组装链表，处理每个 fiber 节点之后，会按照 child、sibling、return 的顺序返回下一个要处理的 fiber 节点 */
     function performUnitOfWork(fiber) {
+        debugger;
         const isFunctionComponent = fiber.type instanceof Function;
+        // 对组件和普通标签进行处理
         if (isFunctionComponent) {
             updateFunctionComponent(fiber);
         }
@@ -54,49 +66,55 @@
             updateHostComponent(fiber);
         }
         if (fiber.child) {
-            return fiber.child;
+            return fiber.child; // 指向孩子
         }
         let nextFiber = fiber;
+        // 遍历同一层级的元素，并且返回sibling
         while (nextFiber) {
             if (nextFiber.sibling) {
-                return nextFiber.sibling;
+                return nextFiber.sibling; // 指向兄弟
             }
-            nextFiber = nextFiber.return;
+            nextFiber = nextFiber.return; // 指向父级
         }
     }
     let wipFiber = null;
     let stateHookIndex = null;
     function updateFunctionComponent(fiber) {
+        debugger;
+        // 用 wipFiber 指向当前处理的 fiber（之前的 nextUnitOfWork 是指向下一个要处理的 fiber 节点
         wipFiber = fiber;
+        // 下面处理些hooks的相关的信息
         stateHookIndex = 0;
         wipFiber.stateHooks = [];
         wipFiber.effectHooks = [];
-        const children = [fiber.type(fiber.props)];
+        const children = [fiber.type(fiber.props)]; // ？
+        console.log(children, 99);
         reconcileChildren(fiber, children);
     }
     function updateHostComponent(fiber) {
+        debugger;
         if (!fiber.dom) {
+            // 根据是否为文本去创建是否为文本信息还是标签信息
             fiber.dom = createDom(fiber);
         }
         reconcileChildren(fiber, fiber.props.children);
     }
     function createDom(fiber) {
-        const dom = fiber.type == "TEXT_ELEMENT"
-            ? document.createTextNode("")
-            : document.createElement(fiber.type);
+        const dom = fiber.type == "TEXT_ELEMENT" ? document.createTextNode("") : document.createElement(fiber.type);
         updateDom(dom, {}, fiber.props);
         return dom;
     }
-    const isEvent = key => key.startsWith("on");
-    const isProperty = key => key !== "children" && !isEvent(key);
-    const isNew = (prev, next) => key => prev[key] !== next[key];
-    const isGone = (prev, next) => key => !(key in next);
+    const isEvent = (key) => key.startsWith("on");
+    const isProperty = (key) => key !== "children" && !isEvent(key);
+    const isNew = (prev, next) => (key) => prev[key] !== next[key];
+    const isGone = (prev, next) => (key) => !(key in next);
     function updateDom(dom, prevProps, nextProps) {
+        debugger;
         //Remove old or changed event listeners
         Object.keys(prevProps)
             .filter(isEvent)
-            .filter(key => !(key in nextProps) || isNew(prevProps, nextProps)(key))
-            .forEach(name => {
+            .filter((key) => !(key in nextProps) || isNew(prevProps, nextProps)(key))
+            .forEach((name) => {
             const eventType = name.toLowerCase().substring(2);
             dom.removeEventListener(eventType, prevProps[name]);
         });
@@ -104,27 +122,28 @@
         Object.keys(prevProps)
             .filter(isProperty)
             .filter(isGone(prevProps, nextProps))
-            .forEach(name => {
+            .forEach((name) => {
             dom[name] = "";
         });
         // Set new or changed properties
         Object.keys(nextProps)
             .filter(isProperty)
             .filter(isNew(prevProps, nextProps))
-            .forEach(name => {
+            .forEach((name) => {
             dom[name] = nextProps[name];
         });
         // Add event listeners
         Object.keys(nextProps)
             .filter(isEvent)
             .filter(isNew(prevProps, nextProps))
-            .forEach(name => {
+            .forEach((name) => {
             const eventType = name.toLowerCase().substring(2);
             dom.addEventListener(eventType, nextProps[name]);
         });
     }
     function reconcileChildren(wipFiber, elements) {
         var _a;
+        debugger;
         let index = 0;
         let oldFiber = (_a = wipFiber.alternate) === null || _a === void 0 ? void 0 : _a.child;
         let prevSibling = null;
@@ -134,9 +153,9 @@
             const sameType = (element === null || element === void 0 ? void 0 : element.type) == (oldFiber === null || oldFiber === void 0 ? void 0 : oldFiber.type);
             if (sameType) {
                 newFiber = {
-                    type: oldFiber.type,
+                    type: oldFiber === null || oldFiber === void 0 ? void 0 : oldFiber.type,
                     props: element.props,
-                    dom: oldFiber.dom,
+                    dom: oldFiber === null || oldFiber === void 0 ? void 0 : oldFiber.dom,
                     return: wipFiber,
                     alternate: oldFiber,
                     effectTag: "UPDATE",
@@ -159,6 +178,7 @@
             if (oldFiber) {
                 oldFiber = oldFiber.sibling;
             }
+            // 这边拿到的是初始时候的child
             if (index === 0) {
                 wipFiber.child = newFiber;
             }
@@ -171,6 +191,7 @@
     }
     function useState(initialState) {
         var _a;
+        debugger;
         const currentFiber = wipFiber;
         const oldHook = (_a = wipFiber.alternate) === null || _a === void 0 ? void 0 : _a.stateHooks[stateHookIndex];
         const stateHook = {
@@ -192,6 +213,7 @@
         return [stateHook.state, setState];
     }
     function useEffect(callback, deps) {
+        debugger;
         const effectHook = {
             callback,
             deps,
@@ -200,6 +222,7 @@
         wipFiber.effectHooks.push(effectHook);
     }
     function commitRoot() {
+        debugger;
         deletions.forEach(commitWork);
         commitWork(wipRoot.child);
         commitEffectHooks();
@@ -207,6 +230,7 @@
         wipRoot = null;
     }
     function commitWork(fiber) {
+        debugger;
         if (!fiber) {
             return;
         }
@@ -291,7 +315,7 @@
         createElement,
         render,
         useState,
-        useEffect
+        useEffect,
     };
     window.MiniReact = MiniReact;
 })();

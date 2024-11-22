@@ -1,17 +1,18 @@
 "use strict";
 const { render, useState, useEffect } = window.MiniReact;
-function App() {
-    const [count, setCount] = useState(0);
-    //   function handleClick(){
-    //     setCount((count)=> count + 1)
-    //   }
+function Counter(props) {
+    const { initialNum, interval } = props;
+    const [count, setCount] = useState(initialNum);
     useEffect(() => {
         const timer = setInterval(() => {
             setCount((count) => count + 1);
-        }, 1000);
+        }, interval);
         return () => clearTimeout(timer);
     }, []);
     return MiniReact.createElement("div", null,
         MiniReact.createElement("p", null, count));
+}
+function App() {
+    return MiniReact.createElement(Counter, { interval: 3000, initialNum: 10 });
 }
 render(MiniReact.createElement(App, null), document.getElementById('root'));
